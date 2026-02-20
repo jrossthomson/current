@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: result-retriever
+spec:
+  containers:
+  - name: server
+    image: nginx:alpine
+    volumeMounts:
+    - name: data-storage
+      mountPath: /usr/share/nginx/html/results
+  volumes:
+  - name: data-storage
+    persistentVolumeClaim:
+      claimName: openfold-pvc

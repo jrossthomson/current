@@ -1,0 +1,40 @@
+steps:
+  # Step 1: Build the Apptainer Builder Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-builder'
+    args: ['build', '-t', '$_LOCATION-docker.pkg.dev/$PROJECT_ID/$_REPOSITORY/apptainer-builder', '-f', 'Dockerfile.builder', '.']
+
+  # Step 2: Use the builder to convert a list of NVIDIA containers
+  # We use a bash loop to handle multiple containers
+  - name: '$_LOCATION-docker.pkg.dev/$_PROJECT_ID/$_REPOSITORY/apptainer-builder'
+    id: 'convert-containers'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        mkdir -p output/
+        containers=(
+          "docker://nvcr.io/nvidia/openmm:8.1.1"
+          "docker://nvcr.io/nvidia/namd:3.0.2"
+          "docker://nvcr.io/hpc/gromacs:2023.2"
+        )
+        for img in "${containers[@]}"; do
+          # Extract a filename from the URI (e.g., cuda-12.1.sif)
+          filename=$(echo $img | sed 's/.*\///; s/:/-/').sif
+          echo "Converting $img to output/$filename..."
+          apptainer build output/$filename $img
+        done
+
+  # Step 3: Upload the resulting .sif files to Google Cloud Storage
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'upload-to-gcs'
+    args: ['gsutil', '-m', 'cp', 'output/*.sif', 'gs://$_BUCKET_NAME/apptainer-images/']
+
+substitutions:
+  _LOCATION: 'us-central1'
+  _REPOSITORY: 'nvidia-repo'
+  _BUCKET_NAME: 'build_nvidia'
+  _PROJECT_ID: 'ai-infra-jrt-1'
+
+options:
+  machineType: 'E2_HIGHCPU_8' # SIF conversion is CPU and I/O intensive

@@ -1,0 +1,18 @@
+steps:
+  # Build the CloudShell Nextflow Docker image and push it to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-cloudshell-nextflow'
+    args:
+      - 'build'
+      - '-t'
+      - '$_LOCATION-docker.pkg.dev/$_PROJECT_ID/$_REPOSITORY/cloudshell-nextflow:latest'
+      - '-f'
+      - 'Dockerfile.cloudshell'
+      - '.'
+images:
+  - '$_LOCATION-docker.pkg.dev/$_PROJECT_ID/$_REPOSITORY/cloudshell-nextflow:latest'
+
+substitutions:
+  _LOCATION: 'us-central1'
+  _REPOSITORY: 'nvidia-repo'
+  _PROJECT_ID: 'ai-infra-jrt-1'
